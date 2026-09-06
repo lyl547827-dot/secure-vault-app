@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الخزنة الخاصة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+
+        .container { width: 100%; max-width: 480px; background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+
+        /* الشاشات */
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        h2 { margin-bottom: 8px; font-size: 1.5rem; text-align: center; }
+        p.subtitle { color: var(--text-muted); font-size: 0.9rem; text-align: center; margin-bottom: 24px; }
+
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
+        input { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: var(--primary); }
+
+        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-danger { background: var(--danger); }
+        .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+
+        /* بطاقات الحسابات داخل الخزنة */
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .account-item { background: var(--bg); border: 1px solid var(--border); padding: 14px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .account-info h4 { font-size: 1rem; margin-bottom: 4px; }
+        .account-info p { font-size: 0.85rem; color: var(--text-muted); font-family: monospace; direction: ltr; text-align: right; }
+        
+        .actions { display: flex; gap: 8px; }
+        .action-btn { background: var(--border); border: none; color: var(--text); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+        .delete-btn { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; opacity: 0; transition: all 0.3s ease; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- 1. شاشة إعداد الرمز (تظهر لأول مرة أو بعد التصفير) -->
+        <div id="setup-screen" class="screen">
+            <h2>إنشاء رمز سري جديد</h2>
+            <p class="subtitle">قم بتعيين رمز سري خاص لحماية بياناتك من الآن فصاعداً</p>
+            <div class="form-group">
+                <label>الرمز السري (PIN)</label>
+                <input type="password" id="setup-pin" placeholder="أدخل رمزاً مكوناً من أرقام أو حروف">
+            </div>
+            <button class="btn" onclick="saveNewPin()">حفظ والبدء</button>
+        </div>
+
+        <!-- 2. شاشة تسجيل الدخول بالرمز -->
+        <div id="login-screen" class="screen">
+            <h2>فتح الخزنة</h2>
+            <p class="subtitle">أدخل الرمز السري للوصول إلى حساباتك</p>
+            <div class="form-group">
+                <label>الرمز السري</label>
+                <input type="password" id="login-pin" placeholder="أدخل الرمز السري">
+            </div>
+            <button class="btn" onclick="verifyPin()">دخول</button>
+        </div>
+
+        <!-- 3. الشاشة الرئيسية (الخزنة) -->
+        <div id="vault-screen" class="screen">
+            <div class="header-flex">
+                <h2>حساباتي</h2>
+                <button class="action-btn" onclick="lockVault()" style="background:var(--danger); color:white;">قفل الخزنة 🔒</button>
+            </div>
+            
+            <div class="form-group" style="background: var(--bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px;">
+                <h4 id="form-title" style="font-size: 0.9rem; margin-bottom: 8px;">إضافة حساب جديد</h4>
+                <input type="text" id="acc-name" placeholder="اسم المنصة (مثال: جوجل)" style="margin-bottom: 8px; font-size: 0.9rem; padding: 8px;">
+                <input type="text" id="acc-user" placeholder="البريد أو اسم المستخدم" style="margin-bottom: 8px; font-size: 0.9rem; padding: 8px; direction: ltr;">
+                <input type="password" id="acc-pass" placeholder="كلمة السر" style="margin-bottom: 8px; font-size: 0.9rem; padding: 8px; direction: ltr;">
+                <button class="btn" style="margin-top: 0; padding: 8px; font-size: 0.9rem;" onclick="saveAccount()">حفظ الحساب</button>
+            </div>
+
+            <div id="accounts-list">
+                <!-- سيتم إدراج الحسابات هنا -->
+            </div>
+
+            <button class="btn btn-secondary btn-danger" style="margin-top: 20px;" onclick="hardReset()">إعادة تعيين شاملة (مسح كل شيء)</button>
+        </div>
+
+    </div>
+
+    <div id="toast" class="toast">تمت العملية بنجاح</div>
+
+    <script>
+        let accounts = JSON.parse(localStorage.getItem('my_clean_vault_data')) || [];
+        let savedPin = localStorage.getItem('my_clean_vault_pin');
+
+        function init() {
+            if (!savedPin) {
+                document.getElementById('setup-screen').classList.add('active');
+            } else {
+                document.getElementById('login-screen').classList.add('active');
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function saveNewPin() {
+            const pin = document.getElementById('setup-pin').value.trim();
+            if (pin.length < 3) return showToast("الرمز قصير جداً");
+            localStorage.setItem('my_clean_vault_pin', pin);
+            savedPin = pin;
+            document.getElementById('setup-screen').classList.remove('active');
+            openVault();
+        }
+
+        function verifyPin() {
+            const pin = document.getElementById('login-pin').value.trim();
+            if (pin === savedPin) {
+                document.getElementById('login-screen').classList.remove('active');
+                openVault();
+            } else {
+                showToast("الرمز غير صحيح");
+            }
+        }
+
+        function lockVault() {
+            document.getElementById('vault-screen').classList.remove('active');
+            document.getElementById('login-pin').value = '';
+            document.getElementById('login-screen').classList.add('active');
+            showToast("تم قفل الخزنة");
+        }
+
+        function openVault() {
+            document.getElementById('vault-screen').classList.add('active');
+            renderAccounts();
+        }
+
+        function saveAccount() {
+            const name = document.getElementById('acc-name').value.trim();
+            const user = document.getElementById('acc-user').value.trim();
+            const pass = document.getElementById('acc-pass').value;
+
+            if (!name || !user || !pass) return showToast("الرجاء ملء جميع الحقول");
+
+            accounts.push({ name, user, pass });
+            localStorage.setItem('my_clean_vault_data', JSON.stringify(accounts));
+
+            document.getElementById('acc-name').value = '';
+            document.getElementById('acc-user').value = '';
+            document.getElementById('acc-pass').value = '';
+
+            renderAccounts();
+            showToast("تم حفظ الحساب بنجاح");
+        }
+
+        function renderAccounts() {
+            const list = document.getElementById('accounts-list');
+            if (accounts.length === 0) {
+                list.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.9rem;">لا توجد حسابات مضافة بعد</p>`;
+                return;
+            }
+
+            list.innerHTML = accounts.map((acc, index) => `
+                <div class="account-item">
+                    <div class="account-info">
+                        <h4>${acc.name}</h4>
+                        <p>${acc.user}</p>
+                    </div>
+                    <div class="actions">
+                        <button class="action-btn" onclick="copyPass('${acc.pass}')">نسخ السر</button>
+                        <button class="action-btn delete-btn" onclick="deleteAcc(${index})">حذف</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function copyPass(pass) {
+            navigator.clipboard.writeText(pass);
+            showToast("تم نسخ كلمة السر للحافظة");
+        }
+
+        function deleteAcc(index) {
+            if (confirm("هل أنت متأكد من الحذف؟")) {
+                accounts.splice(index, 1);
+                localStorage.setItem('my_clean_vault_data', JSON.stringify(accounts));
+                renderAccounts();
+                showToast("تم الحذف بنجاح");
+            }
+        }
+
+        function hardReset() {
+            if (confirm("تحذير: سيتم مسح الرمز وجميع الحسابات نهائياً والبدء من الصفر!")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
