@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vault-cache-v3';
+const CACHE_NAME = 'vault-cache-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,6 +35,22 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // للأصفحة الرئيسية والـ HTML: جرب الشبكة أولاً لتجنب البيانات القديمة
+  if (e.request.mode === 'navigate' || e.request.url.endsWith('.html') || e.request.url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).then((networkResponse) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(e.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(() => {
+        return caches.match(e.request);
+      })
+    );
+    return;
+  }
+
+  // بقية الملفات الثابتة (أيقونات، مانيغست)
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -42,11 +58,6 @@ self.addEventListener('fetch', (e) => {
       }
       return fetch(e.request).then((networkResponse) => {
         return networkResponse;
-      }).catch(() => {
-        // في حال انقطاع النت وفشل جلب صفحة جديدة، يتم إرجاع الصفحة الرئيسية
-        if (e.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
       });
     })
   );
