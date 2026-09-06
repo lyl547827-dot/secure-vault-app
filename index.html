@@ -219,7 +219,7 @@
         <div class="pin-card">
             <div style="font-size: 2.5rem; margin-bottom: 10px;">🔒</div>
             <h2>خزنة الحسابات</h2>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px;">أدخل 4 أحرف أو أرقام لفك التشفير العسكري</p>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px;">أدخل رمز القفل الخاص بك لفك التشفير</p>
             <div class="pin-inputs">
                 <input type="password" inputmode="text" maxlength="1" class="pin-digit" autofocus>
                 <input type="password" inputmode="text" maxlength="1" class="pin-digit">
@@ -308,11 +308,30 @@
             <!-- صفحة الإعدادات والنسخ الاحتياطي -->
             <div id="page-settings" class="page-section">
                 <div class="header-section">
-                    <h2>⚙️ الإعدادات والنسخ الاحتياطي</h2>
+                    <h2>⚙️ الإعدادات والأمان</h2>
                 </div>
+                
+                <!-- قسم إدارة كلمة السر وتغييرها -->
+                <div class="account-card" style="display: block; margin-bottom: 16px;">
+                    <h3 style="margin-bottom: 8px;">🔑 إعدادات رمز القفل (PIN)</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">يمكنك تعيين كلمة سر جديدة للخزنة. سيتم إعادة تشفير بياناتك المحلية والاحتفاظ بها بالرمز الجديد.</p>
+                    <div style="display: flex; gap: 10px; max-width: 400px; flex-wrap: wrap;">
+                        <input type="password" id="new-pin-input" class="form-control" placeholder="أدخل رمز سري جديد (4 خانات فأكثر)" style="flex: 1; min-width: 200px;">
+                        <button class="btn btn-primary" onclick="changeVaultPin()">🔄 تغيير رمز القفل</button>
+                    </div>
+                </div>
+
+                <!-- قسم مسح البيانات وتفريغ الكاش -->
+                <div class="account-card" style="display: block; margin-bottom: 16px; border-color: rgba(239, 68, 68, 0.3);">
+                    <h3 style="margin-bottom: 8px; color: #ef4444;">⚠️ مسح وتفريغ البيانات المحلية (Hard Reset)</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">إذا كانت البيانات القديمة تظهر لك بسبب مخلفات التخزين المؤقت، اضغط هنا لمسح كل ملفات الكاش والذاكرة المحلية نهائياً.</p>
+                    <button class="btn btn-danger" onclick="hardResetStorage()">🧹 مسح شامل وإعادة تعيين التطبيق</button>
+                </div>
+
+                <!-- قسم الاستيراد والتصدير -->
                 <div class="account-card" style="display: block;">
                     <h3 style="margin-bottom: 8px;">استيراد وتصدير البيانات</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">تصدير نسخة احتياطية مشفرة (JSON)، أو استيراد ملفات برنامجك القديم بصيغة (CSV / JSON) مباشرة لتشفيرها ونقلها.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">تصدير نسخة احتياطية مشفرة (JSON)، أو استيراد ملفات بصيغة (CSV / JSON) مباشرة لتشفيرها ونقلها.</p>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-primary" onclick="exportData()">📥 تصدير الحسابات (JSON مشفر)</button>
                         <label class="btn btn-secondary" style="cursor: pointer; margin:0;">
@@ -372,10 +391,10 @@
             
             if (failedAttempts % 3 === 0) {
                 const lockoutTier = Math.floor(failedAttempts / 3);
-                let lockoutMinutes = 1; // المستوى الأول (3 محاولات)
-                if (lockoutTier === 2) lockoutMinutes = 5; // المستوى الثاني (6 محاولات)
-                else if (lockoutTier === 3) lockoutMinutes = 15; // المستوى الثالث (9 محاولات)
-                else if (lockoutTier >= 4) lockoutMinutes = 60; // المستوى الرابع فأكثر (12+ محاولة)
+                let lockoutMinutes = 1;
+                if (lockoutTier === 2) lockoutMinutes = 5;
+                else if (lockoutTier === 3) lockoutMinutes = 15;
+                else if (lockoutTier >= 4) lockoutMinutes = 60;
                 
                 const lockoutDuration = lockoutMinutes * 60 * 1000;
                 lockoutUntil = Date.now() + lockoutDuration;
@@ -428,9 +447,7 @@
             localStorage.removeItem('vault_lockout_until');
         }
 
-        // فحص حالة القفل عند فتح الصفحة
         checkLockoutStatus();
-        // ------------------------------------------------
 
         // محرك التشفير المحلي
         const CryptoEngine = {
@@ -488,7 +505,7 @@
             currentPin = ""; cryptoKey = null;
             document.querySelectorAll('.pin-digit').forEach(i => i.value = "");
             showToast("🔒 تم قفل الخزنة للحماية");
-            checkLockoutStatus(); // تأكد من استمرار العداد إذا كان مقفلاً
+            checkLockoutStatus();
         }
         ['mousemove', 'keydown', 'touchstart', 'click'].forEach(evt => window.addEventListener(evt, resetInactivityTimer));
         document.addEventListener('visibilitychange', () => { if (document.hidden && document.getElementById('pin-screen').style.display === 'none') lockVault(); });
@@ -532,7 +549,7 @@
                         rawAccounts = result.accounts || [];
                         localStorage.setItem('offline_encrypted_vault', JSON.stringify(rawAccounts));
                     } else { 
-                        return handleFailedAttempt(); // تم ربط القفل المتصاعد بخطأ السيرفر
+                        return handleFailedAttempt();
                     }
                 } catch (netErr) {
                     const cached = localStorage.getItem('offline_encrypted_vault');
@@ -542,11 +559,10 @@
                     } else throw netErr;
                 }
 
-                // اختبار التشفير للمسار المحلي دون اتصال لمعرفة صحة الرمز
                 if (rawAccounts.length > 0) {
                     const testDecrypt = await CryptoEngine.decrypt(rawAccounts[0].user || rawAccounts[0].email || rawAccounts[0].username, cryptoKey);
                     if (testDecrypt && testDecrypt.startsWith("⚠️")) {
-                        return handleFailedAttempt(); // تم ربط القفل المتصاعد بخطأ التشفير المحلي
+                        return handleFailedAttempt();
                     }
                 }
 
@@ -556,7 +572,6 @@
                     pass: await CryptoEngine.decrypt(acc.pass || acc.password, cryptoKey)
                 })));
 
-                // تصفير عداد المحاولات الخاطئة عند النجاح
                 resetFailedAttempts();
 
                 document.getElementById('pin-screen').style.display = 'none';
@@ -565,6 +580,67 @@
                 resetInactivityTimer();
             } catch (e) { showToast("خطأ في الاتصال أو فك التشفير"); }
         });
+
+        // دالة تغيير رمز القفل (كلمة السر الجديدة)
+        async function changeVaultPin() {
+            const newPin = document.getElementById('new-pin-input').value.trim();
+            if (newPin.length < 4) return showToast("⚠️ الرمز الجديد يجب ألا يقل عن 4 خانات");
+            
+            if (!confirm("هل أنت متأكد من رغبتك في تغيير رمز القفل وإعادة تشفير الحسابات بالرمز الجديد؟")) return;
+
+            try {
+                showToast("🔄 جاري تحديث الرمز وإعادة التشفير...");
+                const newKey = await CryptoEngine.deriveKey(newPin);
+                
+                // تحديث الرمز في السيرفر
+                let res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "setup_pin", newPin: newPin }) });
+                let result = await res.json();
+                
+                if (result.status === "success" || result.status === "setup_required" || res.ok) {
+                    currentPin = newPin;
+                    cryptoKey = newKey;
+                    await syncEncryptedVault("🔐 تم تغيير الرمز ومزامنة البيانات المشفرة بنجاح!");
+                    document.getElementById('new-pin-input').value = "";
+                } else {
+                    showToast("❌ تعذر تحديث الرمز في السحابة");
+                }
+            } catch(e) {
+                showToast("خطأ في الاتصال أثناء تغيير الرمز");
+            }
+        }
+
+        // دالة المسح الشامل وتفريغ الكاش والذاكرة المحلية
+        async function hardResetStorage() {
+            if (!confirm("⚠️ تحذير جذرى:\nسيتم مسح جميع البيانات المؤكدة محلياً، تفريغ كاش المتصفح، وإجبار التطبيق على إعادة التعيين بالكامل.\n\nهل تريد المتابعة؟")) return;
+            
+            try {
+                // مسح الذاكرة المحلية تماماً
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // مسح كافة ملفات الكاش الخاصة بالـ Service Worker
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                }
+
+                // إلغاء تفعيل الـ Service Worker
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for(let registration of registrations) {
+                        await registration.unregister();
+                    }
+                }
+
+                showToast("🧹 تمت عملية التطهير والمسح الشامل بنجاح!");
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 1500);
+            } catch(e) {
+                showToast("حدث خطأ أثناء إعادة التعيين، جاري إعادة تحميل الصفحة...");
+                window.location.reload(true);
+            }
+        }
 
         function renderCards(accountsToRender) {
             const counterElem = document.getElementById('total-accounts');
